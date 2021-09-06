@@ -17,22 +17,43 @@ namespace ContosoUniversity.Data
             _context = context;
         }
 
-        public IQueryable<Student> GetStudents()
+        public IQueryable<Student> GetStudents(string searchString, string sortOrder)
         {
-            return _context.Students;
+            var students = _context.Students.AsQueryable();
+
+            if (!String.IsNullOrEmpty(searchString))
+            {
+                students = _context.Students.Where(s => s.LastName.Contains(searchString)
+                                       || s.FirstMidName.Contains(searchString));
+            }
+
+            switch (sortOrder)
+            {
+                case "name_desc":
+                    students = students.OrderByDescending(s => s.LastName);
+                    break;
+                case "Date":
+                    students = students.OrderBy(s => s.EnrollmentDate);
+                    break;
+                case "date_desc":
+                    students = students.OrderByDescending(s => s.EnrollmentDate);
+                    break;
+                default:
+                    students = students.OrderBy(s => s.LastName);
+                    break;
+            }
+
+            return students;
         }
 
         public async Task<Student> GetStudentByID(int? id)
         {
-            return await _context.Students.Include(s => s.Enrollments)
+            var students = _context.Students.AsQueryable();
+
+            return await students.Include(s => s.Enrollments)
                             .ThenInclude(e => e.Course)
                             .AsNoTracking()
                             .FirstOrDefaultAsync(m => m.ID == id);
-        }
-
-        public async Task<Student> EditGetStudentByID(int? id)
-        {
-            return await _context.Students.FindAsync(id);
         }
 
         public async Task<Student> DeleteGetStudentByID(int? id)

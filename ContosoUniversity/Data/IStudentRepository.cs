@@ -8,9 +8,8 @@ namespace ContosoUniversity.Data
 {
     public interface IStudentRepository : IDisposable
     {
-        IQueryable<Student> GetStudents();
+        IQueryable<Student> GetStudents(string searchString, string sortOrder);
         Task<Student> GetStudentByID(int? studentId);
-        Task<Student> EditGetStudentByID(int? studentId);
         Task<Student> DeleteGetStudentByID(int? studentId);
         void InsertStudent(Student student);
         void DeleteStudent(Student student);

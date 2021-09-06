@@ -12,13 +12,11 @@ namespace ContosoUniversity.Controllers
 {
     public class StudentsController : Controller
     {
-        private readonly SchoolContext _context;
         private IStudentRepository _studentRepository;
 
-        public StudentsController(SchoolContext context)
+        public StudentsController(IStudentRepository studentRepo)
         {
-            _context = context;
-            _studentRepository = new StudentRepository(_context);
+            _studentRepository = studentRepo;
         }
 
         // GET: Students
@@ -43,28 +41,7 @@ namespace ContosoUniversity.Controllers
 
             ViewData["CurrentFilter"] = searchString;
 
-            var students = from s in _studentRepository.GetStudents()
-                           select s;
-            if (!String.IsNullOrEmpty(searchString))
-            {
-                students = students.Where(s => s.LastName.Contains(searchString)
-                                       || s.FirstMidName.Contains(searchString));
-            }
-            switch (sortOrder)
-            {
-                case "name_desc":
-                    students = students.OrderByDescending(s => s.LastName);
-                    break;
-                case "Date":
-                    students = students.OrderBy(s => s.EnrollmentDate);
-                    break;
-                case "date_desc":
-                    students = students.OrderByDescending(s => s.EnrollmentDate);
-                    break;
-                default:
-                    students = students.OrderBy(s => s.LastName);
-                    break;
-            }
+            var students = _studentRepository.GetStudents(searchString, sortOrder);
 
             int pageSize = 3;
             return View(await PaginatedList<Student>.CreateAsync(students.AsNoTracking(), pageNumber ?? 1, pageSize));
@@ -129,7 +106,7 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var student = await _studentRepository.EditGetStudentByID(id);
+            var student = await _studentRepository.GetStudentByID(id);
             if (student == null)
             {
                 return NotFound();
@@ -148,7 +125,8 @@ namespace ContosoUniversity.Controllers
             {
                 return NotFound();
             }
-            var studentToUpdate = await _context.Students.FirstOrDefaultAsync(s => s.ID == id);
+            var studentToUpdate = await _studentRepository.GetStudentByID(id);
+
             if (await TryUpdateModelAsync<Student>(
                 studentToUpdate,
                 "",
@@ -156,7 +134,8 @@ namespace ContosoUniversity.Controllers
             {
                 try
                 {
-                    await _context.SaveChangesAsync();
+                    _studentRepository.UpdateStudent(studentToUpdate);
+                    await _studentRepository.Save();
                     return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateException /* ex */)
@@ -179,6 +158,7 @@ namespace ContosoUniversity.Controllers
             }
 
             var student = await _studentRepository.DeleteGetStudentByID(id);
+
             if (student == null)
             {
                 return NotFound();
@@ -199,7 +179,8 @@ namespace ContosoUniversity.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var student = await _studentRepository.EditGetStudentByID(id);
+            var student = await _studentRepository.GetStudentByID(id);
+
             if (student == null)
             {
                 return RedirectToAction(nameof(Index));
@@ -216,11 +197,6 @@ namespace ContosoUniversity.Controllers
                 //Log the error (uncomment ex variable name and write a log.)
                 return RedirectToAction(nameof(Delete), new { id = id, saveChangesError = true });
             }
-        }
-
-        private bool StudentExists(int id)
-        {
-            return _context.Students.Any(e => e.ID == id);
         }
     }
 }
