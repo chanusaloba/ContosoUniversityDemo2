@@ -12,13 +12,11 @@ namespace ContosoUniversity.Controllers
 {
     public class DepartmentsController : Controller
     {
-        private readonly SchoolContext _context;
         private IDepartmentRepository _departmentRepository;
         private IInstructorRepository _instructorRepository;
 
-        public DepartmentsController(IDepartmentRepository departmentRepo, IInstructorRepository instructorRepo, SchoolContext context)
+        public DepartmentsController(IDepartmentRepository departmentRepo, IInstructorRepository instructorRepo)
         {
-            _context = context;
             _departmentRepository = departmentRepo;
             _instructorRepository = instructorRepo;
         }
@@ -168,7 +166,7 @@ namespace ContosoUniversity.Controllers
                     }
                 }
             }
-            ViewData["InstructorID"] = new SelectList(_context.Instructors, "ID", "FullName", departmentToUpdate.InstructorID);
+            ViewData["InstructorID"] = new SelectList(_instructorRepository.GetInstructors(), "ID", "FullName", departmentToUpdate.InstructorID);
             return View(departmentToUpdate);
         }
 
