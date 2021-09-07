@@ -15,6 +15,8 @@ namespace ContosoUniversity.Data
         void AssignRowVersion(byte[] rowVersion, Department departmentToUpdate);
         Task Save();
         void InsertDepartment(Department department);
+        void UpdateDepartment(Department departmentToUpdate);
         Task DeleteDepartment(Department department);
+        List<Department> GetDepartmentsOrderByName();
     }
 }

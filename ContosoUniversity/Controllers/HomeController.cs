@@ -15,17 +15,19 @@ namespace ContosoUniversity.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
-        private IHomeRepository _homeRepository;
+        private readonly SchoolContext _context;
+        private UnitOfWork _unitOfWork;
 
-        public HomeController(ILogger<HomeController> logger, IHomeRepository homeRepository)
+        public HomeController(ILogger<HomeController> logger, SchoolContext context)
         {
+            _context = context;
+            _unitOfWork = new UnitOfWork(_context);
             _logger = logger;
-            _homeRepository = homeRepository;
         }
 
         public async Task<ActionResult> About()
         {
-            var data = _homeRepository.About();
+            var data = _unitOfWork.HomeRepository.About();
             return View(await data.AsNoTracking().ToListAsync());
         }
 

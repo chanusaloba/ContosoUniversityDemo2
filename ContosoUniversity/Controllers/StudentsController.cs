@@ -12,11 +12,14 @@ namespace ContosoUniversity.Controllers
 {
     public class StudentsController : Controller
     {
-        private IStudentRepository _studentRepository;
+        //private IStudentRepository _studentRepository;
+        private readonly SchoolContext _context;
+        private UnitOfWork _unitOfWork;
 
-        public StudentsController(IStudentRepository studentRepo)
+        public StudentsController(SchoolContext context)
         {
-            _studentRepository = studentRepo;
+            _context = context;
+            _unitOfWork = new UnitOfWork(_context);
         }
 
         // GET: Students
@@ -41,7 +44,7 @@ namespace ContosoUniversity.Controllers
 
             ViewData["CurrentFilter"] = searchString;
 
-            var students = _studentRepository.GetStudents(searchString, sortOrder);
+            var students = _unitOfWork.StudentRepository.GetStudents(searchString, sortOrder);
 
             int pageSize = 3;
             return View(await PaginatedList<Student>.CreateAsync(students.AsNoTracking(), pageNumber ?? 1, pageSize));
@@ -55,7 +58,7 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var student = await _studentRepository.GetStudentByID(id);
+            var student = await _unitOfWork.StudentRepository.GetStudentByID(id);
 
             if (student == null)
             {
@@ -83,8 +86,8 @@ namespace ContosoUniversity.Controllers
             {
                 if (ModelState.IsValid)
                 {
-                    _studentRepository.InsertStudent(student);
-                    await _studentRepository.Save();
+                    _unitOfWork.StudentRepository.InsertStudent(student);
+                    await _unitOfWork.Save();
                     return RedirectToAction(nameof(Index));
                 }
             }
@@ -106,7 +109,7 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var student = await _studentRepository.GetStudentByID(id);
+            var student = await _unitOfWork.StudentRepository.GetStudentByID(id);
             if (student == null)
             {
                 return NotFound();
@@ -125,7 +128,7 @@ namespace ContosoUniversity.Controllers
             {
                 return NotFound();
             }
-            var studentToUpdate = await _studentRepository.GetStudentByID(id);
+            var studentToUpdate = await _unitOfWork.StudentRepository.GetStudentByID(id);
 
             if (await TryUpdateModelAsync<Student>(
                 studentToUpdate,
@@ -134,8 +137,8 @@ namespace ContosoUniversity.Controllers
             {
                 try
                 {
-                    _studentRepository.UpdateStudent(studentToUpdate);
-                    await _studentRepository.Save();
+                    _unitOfWork.StudentRepository.UpdateStudent(studentToUpdate);
+                    await _unitOfWork.Save();
                     return RedirectToAction(nameof(Index));
                 }
                 catch (DbUpdateException /* ex */)
@@ -157,7 +160,7 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var student = await _studentRepository.DeleteGetStudentByID(id);
+            var student = await _unitOfWork.StudentRepository.DeleteGetStudentByID(id);
 
             if (student == null)
             {
@@ -179,7 +182,7 @@ namespace ContosoUniversity.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var student = await _studentRepository.GetStudentByID(id);
+            var student = await _unitOfWork.StudentRepository.GetStudentByID(id);
 
             if (student == null)
             {
@@ -188,8 +191,8 @@ namespace ContosoUniversity.Controllers
 
             try
             {
-                _studentRepository.DeleteStudent(student);
-                await _studentRepository.Save();
+                _unitOfWork.StudentRepository.DeleteStudent(student);
+                await _unitOfWork.Save();
                 return RedirectToAction(nameof(Index));
             }
             catch (DbUpdateException /* ex */)

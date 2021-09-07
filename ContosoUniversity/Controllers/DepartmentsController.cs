@@ -12,19 +12,19 @@ namespace ContosoUniversity.Controllers
 {
     public class DepartmentsController : Controller
     {
-        private IDepartmentRepository _departmentRepository;
-        private IInstructorRepository _instructorRepository;
+        private readonly SchoolContext _context;
+        private UnitOfWork _unitOfWork;
 
-        public DepartmentsController(IDepartmentRepository departmentRepo, IInstructorRepository instructorRepo)
+        public DepartmentsController(SchoolContext context)
         {
-            _departmentRepository = departmentRepo;
-            _instructorRepository = instructorRepo;
+            _context = context;
+            _unitOfWork = new UnitOfWork(_context);
         }
 
         // GET: Departments
         public async Task<IActionResult> Index()
         {
-            var schoolContext = await _departmentRepository.GetDepartments();
+            var schoolContext = await _unitOfWork.DepartmentRepository.GetDepartments();
             return View(schoolContext);
         }
 
@@ -36,7 +36,7 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var department = await _departmentRepository.GetDepartmentById(id);
+            var department = await _unitOfWork.DepartmentRepository.GetDepartmentById(id);
 
             if (department == null)
             {
@@ -49,7 +49,7 @@ namespace ContosoUniversity.Controllers
         // GET: Departments/Create
         public IActionResult Create()
         {
-            ViewData["InstructorID"] = new SelectList(_instructorRepository.GetInstructors(), "ID", "FullName");
+            ViewData["InstructorID"] = new SelectList(_unitOfWork.InstructorRepository.GetInstructors(), "ID", "FullName");
             return View();
         }
 
@@ -62,11 +62,11 @@ namespace ContosoUniversity.Controllers
         {
             if (ModelState.IsValid)
             {
-                _departmentRepository.InsertDepartment(department);
-                await _departmentRepository.Save();
+                _unitOfWork.DepartmentRepository.InsertDepartment(department);
+                await _unitOfWork.Save();
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["InstructorID"] = new SelectList(_instructorRepository.GetInstructors(), "ID", "FullName", department.InstructorID);
+            ViewData["InstructorID"] = new SelectList(_unitOfWork.InstructorRepository.GetInstructors(), "ID", "FullName", department.InstructorID);
             return View(department);
         }
 
@@ -78,13 +78,13 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var department = await _departmentRepository.GetDepartmentById(id);
+            var department = await _unitOfWork.DepartmentRepository.GetDepartmentById(id);
 
             if (department == null)
             {
                 return NotFound();
             }
-            ViewData["InstructorID"] = new SelectList(_instructorRepository.GetInstructors(), "ID", "FullName", department.InstructorID);
+            ViewData["InstructorID"] = new SelectList(_unitOfWork.InstructorRepository.GetInstructors(), "ID", "FullName", department.InstructorID);
             return View(department);
         }
 
@@ -100,7 +100,7 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var departmentToUpdate = await _departmentRepository.EditGetDepartmentById(id);
+            var departmentToUpdate = await _unitOfWork.DepartmentRepository.EditGetDepartmentById(id);
 
             if (departmentToUpdate == null)
             {
@@ -108,65 +108,43 @@ namespace ContosoUniversity.Controllers
                 await TryUpdateModelAsync(deletedDepartment);
                 ModelState.AddModelError(string.Empty,
                     "Unable to save changes. The department was deleted by another user.");
-                ViewData["InstructorID"] = new SelectList(_instructorRepository.GetInstructors(), "ID", "FullName", deletedDepartment.InstructorID);
+                ViewData["InstructorID"] = new SelectList(_unitOfWork.InstructorRepository.GetInstructors(), "ID", "FullName", deletedDepartment.InstructorID);
                 return View(deletedDepartment);
             }
 
-            _departmentRepository.AssignRowVersion(rowVersion, departmentToUpdate);
+            _unitOfWork.DepartmentRepository.AssignRowVersion(rowVersion, departmentToUpdate);
 
-            if (await TryUpdateModelAsync<Department>(
-                departmentToUpdate,
-                "",
-                s => s.Name, s => s.StartDate, s => s.Budget, s => s.InstructorID))
+            try
             {
-                try
+                _unitOfWork.DepartmentRepository.UpdateDepartment(departmentToUpdate);
+                await _unitOfWork.Save();
+                return RedirectToAction(nameof(Index));
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                var exceptionEntry = ex.Entries.Single();
+                var clientValues = (Department)exceptionEntry.Entity;
+                var databaseEntry = exceptionEntry.GetDatabaseValues();
+                if (databaseEntry == null)
                 {
-                    await _departmentRepository.Save();
-                    return RedirectToAction(nameof(Index));
+                    ModelState.AddModelError(string.Empty,
+                        "Unable to save changes. The department was deleted by another user.");
                 }
-                catch (DbUpdateConcurrencyException ex)
+                else
                 {
-                    var exceptionEntry = ex.Entries.Single();
-                    var clientValues = (Department)exceptionEntry.Entity;
-                    var databaseEntry = exceptionEntry.GetDatabaseValues();
-                    if (databaseEntry == null)
-                    {
-                        ModelState.AddModelError(string.Empty,
-                            "Unable to save changes. The department was deleted by another user.");
-                    }
-                    else
-                    {
-                        var databaseValues = (Department)databaseEntry.ToObject();
+                    var databaseValues = (Department)databaseEntry.ToObject();
 
-                        //if (databaseValues.Name != clientValues.Name)
-                        //{
-                        //    ModelState.AddModelError("Name", $"Current value: {databaseValues.Name}");
-                        //}
-                        //if (databaseValues.Budget != clientValues.Budget)
-                        //{
-                        //    ModelState.AddModelError("Budget", $"Current value: {databaseValues.Budget:c}");
-                        //}
-                        //if (databaseValues.StartDate != clientValues.StartDate)
-                        //{
-                        //    ModelState.AddModelError("StartDate", $"Current value: {databaseValues.StartDate:d}");
-                        //}
-                        //if (databaseValues.InstructorID != clientValues.InstructorID)
-                        //{
-                        //    Instructor databaseInstructor = await _context.Instructors.FirstOrDefaultAsync(i => i.ID == databaseValues.InstructorID);
-                        //    ModelState.AddModelError("InstructorID", $"Current value: {databaseInstructor?.FullName}");
-                        //}
-
-                        ModelState.AddModelError(string.Empty, "The record you attempted to edit "
-                                + "was modified by another user after you got the original value. The "
-                                + "edit operation was canceled and the current values in the database "
-                                + "have been displayed. If you still want to edit this record, click "
-                                + "the Save button again. Otherwise click the Back to List hyperlink.");
-                        departmentToUpdate.RowVersion = (byte[])databaseValues.RowVersion;
-                        ModelState.Remove("RowVersion");
-                    }
+                    ModelState.AddModelError(string.Empty, "The record you attempted to edit "
+                            + "was modified by another user after you got the original value. The "
+                            + "edit operation was canceled and the current values in the database "
+                            + "have been displayed. If you still want to edit this record, click "
+                            + "the Save button again. Otherwise click the Back to List hyperlink.");
+                    departmentToUpdate.RowVersion = (byte[])databaseValues.RowVersion;
+                    ModelState.Remove("RowVersion");
                 }
             }
-            ViewData["InstructorID"] = new SelectList(_instructorRepository.GetInstructors(), "ID", "FullName", departmentToUpdate.InstructorID);
+
+            ViewData["InstructorID"] = new SelectList(_unitOfWork.InstructorRepository.GetInstructors(), "ID", "FullName", departmentToUpdate.InstructorID);
             return View(departmentToUpdate);
         }
 
@@ -178,7 +156,7 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var department = await _departmentRepository.GetDepartmentById(id);
+            var department = await _unitOfWork.DepartmentRepository.GetDepartmentById(id);
 
             if (department == null)
             {
@@ -209,7 +187,7 @@ namespace ContosoUniversity.Controllers
         {
             try
             {
-                await _departmentRepository.DeleteDepartment(department);
+                await _unitOfWork.DepartmentRepository.DeleteDepartment(department);
                 return RedirectToAction(nameof(Index));
             }
             catch (DbUpdateConcurrencyException /* ex */)

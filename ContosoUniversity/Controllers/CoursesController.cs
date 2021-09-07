@@ -100,7 +100,7 @@ namespace ContosoUniversity.Controllers
             try
             {
                 _unitOfWork.CourseRepository.Update(course);
-                await _context.SaveChangesAsync();
+                await _unitOfWork.Save();
                 return RedirectToAction(nameof(Index));
             }
             catch (DbUpdateException /* ex */)
@@ -149,10 +149,9 @@ namespace ContosoUniversity.Controllers
 
         private void PopulateDepartmentsDropDownList(object selectedDepartment = null)
         {
-            var departmentsQuery = _unitOfWork.DepartmentRepository.Get(
-             orderBy: q => q.OrderBy(d => d.Name));
+            var departmentsQuery = _unitOfWork.DepartmentRepository.GetDepartmentsOrderByName();
 
-            ViewBag.DepartmentID = new SelectList(departmentsQuery.Result, "DepartmentID", "Name", selectedDepartment);
+            ViewBag.DepartmentID = new SelectList(departmentsQuery, "DepartmentID", "Name", selectedDepartment);
         }
         private bool CourseExists(int id)
         {

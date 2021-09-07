@@ -23,6 +23,12 @@ namespace ContosoUniversity.Data
             return Result;
         }
 
+        public List<Department> GetDepartmentsOrderByName()
+        {
+            var Result = _context.Departments.OrderBy(x => x.Name).ToList();
+            return Result;
+        }
+
         public async Task<Department> GetDepartmentById(int? id)
         {
             var department = await _context.Departments
@@ -36,6 +42,11 @@ namespace ContosoUniversity.Data
         public void InsertDepartment(Department department)
         {
             _context.Add(department);
+        }
+
+        public void UpdateDepartment(Department departmentToUpdate)
+        {
+            _context.Entry(departmentToUpdate).State = Microsoft.EntityFrameworkCore.EntityState.Modified;
         }
 
         public async Task<Department> EditGetDepartmentById(int? id)

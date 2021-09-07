@@ -13,17 +13,19 @@ namespace ContosoUniversity.Controllers
 {
     public class InstructorsController : Controller
     {
-        private IInstructorRepository _instructorRepo;
+        private readonly SchoolContext _context;
+        private UnitOfWork _unitOfWork;
 
-        public InstructorsController(IInstructorRepository instructorRepo)
+        public InstructorsController(SchoolContext context)
         {
-            _instructorRepo = instructorRepo;
+            _context = context;
+            _unitOfWork = new UnitOfWork(_context);
         }
 
         // GET: Instructors
         public async Task<IActionResult> Index(int? id, int? courseID)
         {
-            var viewModel = await _instructorRepo.GetInstructors(id, courseID);
+            var viewModel = await _unitOfWork.InstructorRepository.GetInstructors(id, courseID);
 
             if (id != null)
             {
@@ -46,7 +48,7 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var instructor = await _instructorRepo.GetInstructorById(id);
+            var instructor = await _unitOfWork.InstructorRepository.GetInstructorById(id);
 
             if (instructor == null)
             {
@@ -84,8 +86,8 @@ namespace ContosoUniversity.Controllers
 
             if (ModelState.IsValid)
             {
-                _instructorRepo.InsertInstructor(instructor);
-                await _instructorRepo.Save();
+                _unitOfWork.InstructorRepository.InsertInstructor(instructor);
+                await _unitOfWork.Save();
                 return RedirectToAction(nameof(Index));
             }
 
@@ -101,7 +103,7 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var instructor = await _instructorRepo.EditGetInstructorById(id);
+            var instructor = await _unitOfWork.InstructorRepository.EditGetInstructorById(id);
 
             if (instructor == null)
             {
@@ -113,7 +115,7 @@ namespace ContosoUniversity.Controllers
 
         private void PopulateAssignedCourseData(Instructor instructor)
         {    
-            ViewData["Courses"] = _instructorRepo.PopulateCourseData(instructor);
+            ViewData["Courses"] = _unitOfWork.InstructorRepository.PopulateCourseData(instructor);
         }
 
         // POST: Instructors/Edit/5
@@ -128,7 +130,7 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var instructorToUpdate = await _instructorRepo.EditGetInstructorById(id);
+            var instructorToUpdate = await _unitOfWork.InstructorRepository.EditGetInstructorById(id);
 
             if (await TryUpdateModelAsync<Instructor>(
                 instructorToUpdate,
@@ -140,12 +142,12 @@ namespace ContosoUniversity.Controllers
                     instructorToUpdate.OfficeAssignment = null;
                 }
 
-                _instructorRepo.UpdateInstructor(instructorToUpdate);
+                _unitOfWork.InstructorRepository.UpdateInstructor(instructorToUpdate);
                 UpdateInstructorCourses(selectedCourses, instructorToUpdate);
 
                 try
                 {                  
-                    await _instructorRepo.Save();
+                    await _unitOfWork.Save();
                 }
                 catch (DbUpdateException /* ex */)
                 {
@@ -170,7 +172,7 @@ namespace ContosoUniversity.Controllers
                 return NotFound();
             }
 
-            var instructor = await _instructorRepo.GetInstructorById(id);
+            var instructor = await _unitOfWork.InstructorRepository.GetInstructorById(id);
 
             if (instructor == null)
             {
@@ -185,9 +187,9 @@ namespace ContosoUniversity.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            await _instructorRepo.DeleteInstructor(id);
+            await _unitOfWork.InstructorRepository.DeleteInstructor(id);
 
-            await _instructorRepo.Save();
+            await _unitOfWork.Save();
             return RedirectToAction(nameof(Index));
         }
 
@@ -199,7 +201,7 @@ namespace ContosoUniversity.Controllers
                 return;
             }
 
-            _instructorRepo.UpdateInstructionCourses(selectedCourses, instructorToUpdate);     
+            _unitOfWork.InstructorRepository.UpdateInstructionCourses(selectedCourses, instructorToUpdate);     
         }
     }
 }

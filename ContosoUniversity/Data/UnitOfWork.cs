@@ -7,7 +7,10 @@ namespace ContosoUniversity.Data
     public class UnitOfWork : IDisposable
     {
         private SchoolContext _context;
-        private GenericRepository<Department> _departmentRepository;
+        private DepartmentRepository _departmentRepository;
+        private InstructorRepository _instructorRepository;
+        private HomeRepository _homeRepository;
+        private StudentRepository _studentRepository;
         private GenericRepository<Course> _courseRepository;
 
         public UnitOfWork(SchoolContext schoolContext)
@@ -15,16 +18,55 @@ namespace ContosoUniversity.Data
             _context = schoolContext;
         }
 
-        public GenericRepository<Department> DepartmentRepository
+        public DepartmentRepository DepartmentRepository
         {
             get
             {
 
                 if (_departmentRepository == null)
                 {
-                    _departmentRepository = new GenericRepository<Department>(_context);
+                    _departmentRepository = new DepartmentRepository(_context);
                 }
                 return _departmentRepository;
+            }
+        }
+
+        public InstructorRepository InstructorRepository
+        {
+            get
+            {
+
+                if (_instructorRepository == null)
+                {
+                    _instructorRepository = new InstructorRepository(_context);
+                }
+                return _instructorRepository;
+            }
+        }
+
+        public HomeRepository HomeRepository
+        {
+            get
+            {
+
+                if (_homeRepository == null)
+                {
+                    _homeRepository = new HomeRepository(_context);
+                }
+                return _homeRepository;
+            }
+        }
+
+        public StudentRepository StudentRepository
+        {
+            get
+            {
+
+                if (_studentRepository == null)
+                {
+                    _studentRepository = new StudentRepository(_context);
+                }
+                return _studentRepository;
             }
         }
 
